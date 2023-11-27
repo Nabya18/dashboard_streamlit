@@ -41,6 +41,48 @@ def create_bystate_df(df):
 
     return bystate_df
 
+# Produk yang paling banyak terkirim
+def calculate_most_shipped_products_df(df):
+    # Membuat dataframe baru untuk menghitung jumlah terkirim per produk per tahun
+    product_shipments_df = df.groupby(['year', 'product_category_name'])['order_status_x'].count().reset_index()
+
+    # Produk yang paling banyak terkirim tiap tahun
+    most_shipped_products_df = product_shipments_df.loc[product_shipments_df.groupby('year')['order_status_x'].idxmax()]
+
+    return most_shipped_products_df
+
+def calculate_least_shipped_products_df(df):
+    # Membuat dataframe baru untuk menghitung jumlah terkirim per produk per tahun
+    product_shipments_df = df.groupby(['year', 'product_category_name'])['order_status_x'].count().reset_index()
+
+    # Produk yang paling banyak terkirim tiap tahun
+    least_shipped_products_df = product_shipments_df.loc[product_shipments_df.groupby('year')['order_status_x'].idxmin()]
+
+    return least_shipped_products_df
+
+def calculate_city_most_purchases_df(df):
+    # Membuat dataframe baru untuk menghitung jumlah pembelian per kota per tahun
+    city_purchases_df = df.groupby(['year', 'customer_city']).size().reset_index(name='order_status_x')
+
+    # Mengurutkan berdasarkan tahun dan jumlah pembelian secara menurun
+    city_purchases_df = city_purchases_df.sort_values(by=['year', 'order_status_x'], ascending=[True, False])
+
+    # Menjaga baris pertama (kota dengan pembelian terbanyak) untuk setiap tahun
+    city_most_purchases_df = city_purchases_df.drop_duplicates(subset=['year'], keep='first')
+
+    return city_most_purchases_df
+
+def calculate_city_least_purchases_df(df):
+    # Membuat dataframe baru untuk menghitung jumlah pembelian per kota per tahun
+    city_purchases_df = df.groupby(['year', 'customer_city']).size().reset_index(name='order_status_x')
+
+    # Mengurutkan berdasarkan tahun dan jumlah pembelian secara menaik
+    city_least_purchases_df = city_purchases_df.sort_values(by=['year', 'order_status_x'], ascending=[True, True])
+
+    # Menjaga baris pertama (kota dengan pembelian terkecil) untuk setiap tahun
+    city_least_purchases_df = city_least_purchases_df.drop_duplicates(subset=['year'], keep='first')
+
+    return city_least_purchases_df
 
 # untuk menghasilkan rfm_df
 def create_rfm_df(df):
@@ -93,6 +135,10 @@ all_df = main_df[(main_df["order_delivered_customer_date"] >= str(start_date)) &
 daily_orders_df = create_daily_orders_df(all_df)
 sum_order_items_df = create_sum_order_items_df(all_df)
 bystate_df = create_bystate_df(all_df)
+most_shipped_products_df = calculate_most_shipped_products_df(all_df)
+least_shipped_products_df = calculate_least_shipped_products_df(all_df)
+city_most_purchases_df = calculate_city_most_purchases_df(all_df)
+city_least_purchases_df = calculate_city_least_purchases_df(all_df)
 rfm_df = create_rfm_df(all_df)
 
 # Melengkapi Dashboard dengan Berbagai Visualisasi Data
@@ -128,30 +174,55 @@ ax.tick_params(axis='x', labelsize=15)
 
 st.pyplot(fig)
 
-# menyertakan informasi tentang performa penjualan dari setiap produk
-st.subheader("Best & Worst Performing Product")
-
+# Produk yang paling banyak terkirim vs Produk yang paling sedikit terkirim dari tahun ke tahun
+# Visualisasi untuk produk yang paling banyak terkirim dari tahun ke tahun
 fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(35, 15))
 
-colors = ["#90CAF9"]
+colors = ["#90CAF9", "#F9BF90"]
 
-sns.barplot(x="product_photos_qty", y="product_category_name", data=sum_order_items_df.head(5), palette=colors,
+sns.barplot(x='year', y='order_status_x', hue='product_category_name', data=most_shipped_products_df, palette=colors,
             ax=ax[0])
 ax[0].set_ylabel(None)
-ax[0].set_xlabel("Number of Sales", fontsize=30)
-ax[0].set_title("Best Performing Product", loc="center", fontsize=50)
+ax[0].set_xlabel("Year of Sales", fontsize=30)
+ax[0].set_title("Most Product Delivered YoY", loc="center", fontsize=50)
 ax[0].tick_params(axis='y', labelsize=35)
 ax[0].tick_params(axis='x', labelsize=30)
 
-sns.barplot(x="product_photos_qty", y="product_category_name",
-            data=sum_order_items_df.sort_values(by="product_photos_qty", ascending=True).head(5), palette=colors,
+# Visualisasi untuk produk yang paling sedikit terkirim dari tahun ke tahun
+sns.barplot(x='year', y='order_status_x', hue='product_category_name', data=least_shipped_products_df, palette=colors,
             ax=ax[1])
 ax[1].set_ylabel(None)
-ax[1].set_xlabel("Number of Sales", fontsize=30)
-ax[1].invert_xaxis()
-ax[1].yaxis.set_label_position("right")
-ax[1].yaxis.tick_right()
-ax[1].set_title("Worst Performing Product", loc="center", fontsize=50)
+ax[1].set_xlabel("Year of Sales", fontsize=30)
+ax[1].yaxis.set_label_position("left")
+ax[1].yaxis.tick_left()
+ax[1].set_title("Least Product Delivered YoY", loc="center", fontsize=50)
+ax[1].tick_params(axis='y', labelsize=35)
+ax[1].tick_params(axis='x', labelsize=30)
+
+st.pyplot(fig)
+
+# Kota dengan jumlah pembelian produk paling tinggi vs Kota dengan jumlah pembelian produk paling rendah dari tahun ke tahun
+# Visualisasi untuk kota yang paling banyak produk terkirim dari tahun ke tahun
+fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(35, 15))
+
+colors = ["#90CAF9", "#F9BF90", "#B3CC97"]
+
+sns.barplot(x='year', y='order_status_x', hue='customer_city', data=city_most_purchases_df, palette=colors,
+            ax=ax[0])
+ax[0].set_ylabel(None)
+ax[0].set_xlabel("Year of Sales", fontsize=30)
+ax[0].set_title("City Most Product Delivered YoY", loc="center", fontsize=50)
+ax[0].tick_params(axis='y', labelsize=35)
+ax[0].tick_params(axis='x', labelsize=30)
+
+# Visualisasi untuk kota yang paling sedikit produk terkirim dari tahun ke tahun
+sns.barplot(x='year', y='order_status_x', hue='customer_city', data=city_least_purchases_df, palette=colors,
+            ax=ax[1])
+ax[1].set_ylabel(None)
+ax[1].set_xlabel("Year of Sales", fontsize=30)
+ax[1].yaxis.set_label_position("left")
+ax[1].yaxis.tick_left()
+ax[1].set_title("City Least Product Delivered YoY", loc="center", fontsize=50)
 ax[1].tick_params(axis='y', labelsize=35)
 ax[1].tick_params(axis='x', labelsize=30)
 
